@@ -11,7 +11,7 @@ import uvicorn
 
 # Load environment variables from .env
 load_dotenv()
-API_KEY = os.getenv("AI_BUILDER_API_KEY")
+API_KEY = os.getenv("AI_BUILDER_API_KEY") or os.getenv("AI_BUILDER_TOKEN")
 API_BASE_URL = os.getenv("API_GATEWAY_URL", "https://space.ai-builders.com/backend/v1")
 
 # Initialize FastAPI application
@@ -279,4 +279,5 @@ def root():
     return {"message": "SuperMind Core Agentic Engine is Live!", "gui": "http://127.0.0.1:8000/gui", "docs": "http://127.0.0.1:8000/docs"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
