@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperMind Engine - Agentic AI GUI</title>
+    <!-- Google Fonts & Marked.js for Markdown -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">🚀</div>
+                <div class="brand-text">
+                    <h2>SuperMind</h2>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <label for="model-select" class="section-label">AI Model</label>
+                <select id="model-select" class="custom-select">
+                    <option value="grok-4-fast" selected>xAI Grok 4 Fast</option>
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    <option value="gpt-5">OpenAI GPT-5</option>
+                    <option value="supermind-agent-v1">SuperMind Agent V1</option>
+                    <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                    <option value="kimi-k2.5">Kimi K2.5</option>
+                </select>
+            </div>
+
+            <!-- Sleek Chat History Panel (Primary Sidebar Feature) -->
+            <div class="sidebar-section history-section">
+                <div class="history-header">
+                    <label class="section-label">Chat History</label>
+                    <button id="new-chat-btn" class="new-chat-btn">+ New Chat</button>
+                </div>
+                <div id="history-list" class="history-list">
+                    <!-- Saved chats will be dynamically rendered here -->
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot green"></span>
+                    <span>FastAPI Core Connected</span>
+                </div>
+                <button id="clear-chat-btn" class="clear-btn">🗑️ Clear Current Chat</button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-main">
+            <header class="chat-header">
+                <div class="header-info">
+                    <h3 id="current-mode-title">SuperMind Agentic Engine</h3>
+                    <p id="current-mode-subtitle">Autonomous reasoning, real-time web search & page reading.</p>
+                </div>
+                <div class="header-links">
+                    <a href="/docs" target="_blank" class="nav-link">Swagger Docs 📄</a>
+                    <a href="/openapi.json" target="_blank" class="nav-link">OpenAPI Spec 🤖</a>
+                </div>
+            </header>
+
+            <div id="messages-container" class="messages-container">
+                <!-- Welcome Card -->
+                <div class="welcome-card">
+                    <div class="welcome-icon">✨</div>
+                    <h3>Welcome to SuperMind Core Agentic Engine</h3>
+                    <p>Experience an AI system equipped with autonomous tool calling, multi-step reasoning, and live Web Search.</p>
+                </div>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="input-container">
+                <!-- Image Preview Container -->
+                <div id="image-preview-bar" class="image-preview-bar hidden">
+                    <div class="preview-wrapper">
+                        <img id="preview-img" src="" alt="Clipboard Screenshot Preview">
+                        <button type="button" id="remove-img-btn" class="remove-img-btn">✕</button>
+                    </div>
+                </div>
+
+                <form id="chat-form" class="chat-form">
+                    <input type="file" id="file-input" accept="image/*" style="display: none;">
+                    <button type="button" id="attach-btn" class="attach-btn" title="Paste screenshot or attach image">📎</button>
+                    <textarea id="prompt-input" placeholder="Paste a screenshot (Ctrl+V) or type a message..." rows="1"></textarea>
+                    <button type="submit" id="send-btn" class="send-btn">
+                        <span>Send</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </form>
+                <div class="input-footer">
+                    <span>Ctrl+V to paste screenshots • Shift+Enter for new line • Powered by FastAPI & AI Builder Space</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
