@@ -14,6 +14,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const previewImg = document.getElementById("preview-img");
     const removeImgBtn = document.getElementById("remove-img-btn");
 
+    // Microphone & Voice Elements
+    const micBtn = document.getElementById("mic-btn");
+    let isRecording = false;
+    let recognition = null;
+
     let currentImageData = null; // Base64 data URL
     let currentChatId = Date.now().toString();
     let currentChatMessages = [];
@@ -425,4 +430,99 @@ document.addEventListener("DOMContentLoaded", () => {
             }[m];
         });
     }
+
+    // ==========================================
+    // Antigravity Voice Input & STT Integration
+    // ==========================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function initSpeechRecognition() {
+        if (!SpeechRecognition) return null;
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = 'en-US';
+
+        rec.onstart = () => {
+            isRecording = true;
+            if (micBtn) {
+                micBtn.classList.add("recording");
+                micBtn.title = "Recording... Click or press Ctrl+M to stop";
+            }
+        };
+
+        rec.onresult = (event) => {
+            let transcriptText = '';
+            for (let i = 0; i < event.results.length; ++i) {
+                transcriptText += event.results[i][0].transcript;
+            }
+            if (transcriptText) {
+                promptInput.value = transcriptText;
+                promptInput.dispatchEvent(new Event("input"));
+            }
+        };
+
+        rec.onerror = (event) => {
+            console.warn("Speech recognition error:", event.error);
+            stopVoiceRecording();
+        };
+
+        rec.onend = () => {
+            stopVoiceRecording();
+        };
+
+        return rec;
+    }
+
+    function toggleVoiceRecording() {
+        if (isRecording) {
+            stopVoiceRecording();
+        } else {
+            startVoiceRecording();
+        }
+    }
+
+    function startVoiceRecording() {
+        if (!recognition) {
+            recognition = initSpeechRecognition();
+        }
+
+        if (recognition) {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.warn("Speech recognition start warning:", e);
+            }
+        } else {
+            alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+        }
+    }
+
+    function stopVoiceRecording() {
+        isRecording = false;
+        if (micBtn) {
+            micBtn.classList.remove("recording");
+            micBtn.title = "Voice Input (Ctrl+M)";
+        }
+        if (recognition) {
+            try {
+                recognition.stop();
+            } catch (e) {}
+        }
+    }
+
+    if (micBtn) {
+        micBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleVoiceRecording();
+        });
+    }
+
+    // Global Shortcut: Ctrl+M or Cmd+M to toggle Voice Recording
+    document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+            e.preventDefault();
+            toggleVoiceRecording();
+        }
+    });
 });
