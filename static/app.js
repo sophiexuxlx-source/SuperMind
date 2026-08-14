@@ -472,7 +472,10 @@ document.addEventListener("DOMContentLoaded", () => {
         rec.onresult = (event) => {
             let transcriptText = '';
             for (let i = 0; i < event.results.length; ++i) {
-                transcriptText += event.results[i][0].transcript;
+                let chunk = event.results[i][0].transcript.trim();
+                if (chunk) {
+                    transcriptText += (transcriptText ? ' ' : '') + chunk;
+                }
             }
             if (transcriptText) {
                 promptInput.value = formatSemanticTerms(transcriptText);
@@ -490,6 +493,37 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         return rec;
+    }
+
+    // Semantic LLM Speech Refinement Pass (Antigravity 2.0 Quality)
+    async function refineAndCleanPrompt() {
+        const rawText = promptInput.value.trim();
+        if (!rawText || rawText.length < 5) return;
+
+        if (micBtn) {
+            micBtn.title = "Refining prompt with Grok AI...";
+        }
+
+        try {
+            const res = await fetch("/api/refine-speech", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ transcript: rawText })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.refined_text) {
+                    promptInput.value = formatSemanticTerms(data.refined_text);
+                    promptInput.dispatchEvent(new Event("input"));
+                }
+            }
+        } catch (e) {
+            console.warn("Speech refinement pass error:", e);
+        } finally {
+            if (micBtn) {
+                micBtn.title = "Voice Input (Ctrl+M • Shift+Click for Whisper STT)";
+            }
+        }
     }
 
     function toggleVoiceRecording(forceWhisper = false) {
@@ -561,6 +595,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (data.text) {
                             promptInput.value = formatSemanticTerms(data.text);
                             promptInput.dispatchEvent(new Event("input"));
+                            await refineAndCleanPrompt();
                         }
                     } else {
                         console.warn("Whisper transcription failed");
@@ -587,6 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function stopVoiceRecording() {
+        const wasRecording = isRecording;
         isRecording = false;
         if (micBtn) {
             micBtn.classList.remove("recording");
@@ -604,6 +640,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (e) {}
         }
         isWhisperMode = false;
+
+        if (wasRecording) {
+            refineAndCleanPrompt();
+        }
     }
 
     if (micBtn) {

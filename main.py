@@ -353,6 +353,55 @@ async def ambient_capture(file: UploadFile = File(...)):
         print(f"[Aha Catcher Exception]: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to process ambient audio: {str(e)}")
 
+class RefineSpeechRequest(BaseModel):
+    transcript: str
+
+@app.post("/api/refine-speech")
+def refine_speech(req: RefineSpeechRequest):
+    """
+    Semantic Speech Refiner (Antigravity Quality).
+    Transforms raw speech transcriptions into clean, well-spaced,
+    properly punctuated, and disfluency-free prompts using grok-4-fast.
+    """
+    if not req.transcript or not req.transcript.strip():
+        return {"refined_text": ""}
+
+    if not API_KEY:
+        return {"refined_text": req.transcript}
+
+    system_prompt = (
+        "You are a real-time voice speech refiner for an AI assistant. "
+        "Your job is to transform raw, messy speech-to-text transcriptions into clean, well-spaced, "
+        "properly punctuated, and grammatically correct prompts. "
+        "Strict Rules:\n"
+        "1. Insert missing spaces between jammed words (e.g. 'knowUh' -> 'know. Uh' or clean text).\n"
+        "2. Remove filler words (uh, um, like, you know, okay) and repetitive self-corrections.\n"
+        "3. Keep the user's exact semantic intent and core request.\n"
+        "4. Return ONLY the refined prompt text without any introductory conversational text or quotes."
+    )
+
+    url = f"{API_BASE_URL}/chat/completions"
+    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "grok-4-fast",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": req.transcript}
+        ],
+        "temperature": 0.2
+    }
+
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=5)
+        if res.status_code == 200:
+            cleaned = res.json()["choices"][0]["message"]["content"].strip()
+            return {"refined_text": cleaned}
+        return {"refined_text": req.transcript}
+    except Exception as e:
+        print(f"[Refine Speech Error]: {e}")
+        return {"refined_text": req.transcript}
+
+
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     """
