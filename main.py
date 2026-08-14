@@ -356,8 +356,8 @@ async def ambient_capture(file: UploadFile = File(...)):
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     """
-    High-Precision Neural Whisper STT Endpoint.
-    Transcribes uploaded audio files via AI Builder Space STT API
+    High-Speed xAI Grok STT Endpoint.
+    Transcribes WebRTC noise-suppressed audio files via AI Builder Space Grok STT API
     with technical domain terms ('FastAPI, SuperMind, Grok, Pydantic, Docker, Antigravity, Koyeb').
     """
     if not API_KEY:
@@ -372,22 +372,27 @@ async def transcribe_audio(file: UploadFile = File(...)):
             "audio_file": (filename, audio_content, content_type)
         }
         data = {
-            "model": "whisper-1",
-            "prompt": "SuperMind Engine technical chat with FastAPI, Pydantic, Grok, Docker, Koyeb, Antigravity",
+            "diarize": "true",
             "terms": "FastAPI, SuperMind, Pydantic, Grok, Docker, Antigravity, Koyeb"
         }
         headers = {
             "Authorization": f"Bearer {API_KEY}"
         }
 
-        stt_url = f"{API_BASE_URL}/audio/transcriptions"
+        # Route to xAI Grok STT endpoint for ultra-fast response time
+        stt_url = f"{API_BASE_URL}/audio/grok-transcription"
         stt_response = requests.post(stt_url, files=files, data=data, headers=headers)
+
+        if stt_response.status_code != 200:
+            # Fallback to standard transcriptions if needed
+            fallback_url = f"{API_BASE_URL}/audio/transcriptions"
+            stt_response = requests.post(fallback_url, files=files, data={"model": "whisper-1", "terms": data["terms"]}, headers=headers)
 
         if stt_response.status_code != 200:
             raise HTTPException(status_code=stt_response.status_code, detail=f"AI Builder STT Error: {stt_response.text}")
 
         res_json = stt_response.json()
-        transcript = res_json.get("text", "").strip()
+        transcript = res_json.get("text", "").strip() or res_json.get("transcript", "").strip()
         return {"text": transcript}
 
     except HTTPException:

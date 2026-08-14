@@ -523,7 +523,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function startWhisperRecording() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioConstraints = {
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    channelCount: 1,
+                    sampleRate: 24000
+                }
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream);
 
@@ -539,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (micBtn) {
                     micBtn.classList.remove("whisper-mode");
-                    micBtn.title = "Transcribing with Whisper STT...";
+                    micBtn.title = "Transcribing with xAI Grok STT...";
                 }
 
                 try {
