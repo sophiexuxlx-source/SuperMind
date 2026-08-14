@@ -1,7 +1,7 @@
 import os
 import requests
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -16,12 +16,12 @@ API_BASE_URL = os.getenv("API_GATEWAY_URL", "https://space.ai-builders.com/backe
 
 # Initialize FastAPI application
 app = FastAPI(
-    title="SuperMind Engine - Phase A Agentic Core",
-    description="Minimal Agentic Engine with Tool Calling, Multi-Step Reasoning, and Web GUI",
-    version="0.1.0"
+    title="SuperMind Engine - Phase A & B Agentic Core",
+    description="Agentic Engine with Tool Calling, Multi-Step Reasoning, Web GUI, and Aha Catcher Ambient MVP",
+    version="0.2.0"
 )
 
-# Mount static folder for Chapter 4 Web GUI
+# Mount static folder for Web GUI and Ambient Simulator
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -30,6 +30,12 @@ if os.path.exists(static_dir):
 def redirect_to_gui():
     """Redirect /gui to the standalone ChatGPT-style Web UI."""
     return RedirectResponse(url="/static/index.html")
+
+@app.get("/ambient")
+def redirect_to_ambient():
+    """Redirect /ambient to the Aha Catcher Ambient Web MVP Simulator."""
+    return RedirectResponse(url="/static/ambient.html")
+
 
 # Define Request / Response Models
 class ChatRequest(BaseModel):
@@ -272,11 +278,135 @@ def agentic_chat(req: ChatRequest):
     final_text = messages[-1].get("content", "Completed max reasoning loops.")
     return ChatResponse(reply=final_text, tool_calls_executed=executed_traces)
 
+# ==============================================================================
+# Phase B: Pillar 1 — Aha Catcher Ambient Audio Capture Endpoint
+# ==============================================================================
+class AmbientCaptureResponse(BaseModel):
+    transcript: str
+    summary: str
+
+@app.post("/api/ambient/capture", response_model=AmbientCaptureResponse)
+async def ambient_capture(file: UploadFile = File(...)):
+    """
+    Aha Catcher MVP Endpoint:
+    1. Receives 30-second rolling audio buffer from browser.
+    2. Transcribes audio via Grok/Whisper STT.
+    3. Triggers Agentic Reasoning + Web Search loop to synthesize a research summary.
+    4. Returns clean transcript and summary.
+    """
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="AI_BUILDER_API_KEY / AI_BUILDER_TOKEN is not configured.")
+
+    try:
+        audio_bytes = await file.read()
+        if not audio_bytes or len(audio_bytes) < 100:
+            return AmbientCaptureResponse(
+                transcript="(No audio detected)",
+                summary="Audio buffer was empty or too short. Please speak an idea and click Capture Aha! again."
+            )
+
+        # Step 1: Transcribe via AI Builder Space STT
+        stt_url = f"{API_BASE_URL}/audio/transcriptions"
+        files = {
+            "file": (file.filename or "ambient_audio.webm", audio_bytes, file.content_type or "audio/webm")
+        }
+        form_data = {"model": "whisper-1"}
+        headers = {"Authorization": f"Bearer {API_KEY}"}
+
+        stt_response = requests.post(stt_url, files=files, data=form_data, headers=headers, timeout=20)
+        
+        if stt_response.status_code != 200:
+            print(f"[STT Error] Status {stt_response.status_code}: {stt_response.text}")
+            raise HTTPException(status_code=502, detail=f"STT service error: {stt_response.text}")
+
+        transcript_data = stt_response.json()
+        transcript = transcript_data.get("text", "").strip()
+
+        if not transcript:
+            return AmbientCaptureResponse(
+                transcript="(Silence / Unintelligible)",
+                summary="No clear speech was recognized in the audio buffer. Try speaking a bit louder or closer to the microphone."
+            )
+
+        print(f"[Aha Catcher] Transcribed Speech: \"{transcript}\"")
+
+        # Step 2: Agentic Synthesis & Background Web Search
+        agent_prompt = (
+            f"The user just captured an Aha! idea / insight via ambient audio.\n\n"
+            f"Transcribed Audio: \"{transcript}\"\n\n"
+            f"As the Aha Catcher AI:\n"
+            f"1. Extract the core insight or hypothesis.\n"
+            f"2. Use web_search if relevant to find relevant technologies, facts, or references.\n"
+            f"3. Provide a concise, high-impact research summary with 2-3 concrete actionable takeaways."
+        )
+
+        agent_result = agentic_chat(ChatRequest(prompt=agent_prompt, model="grok-4-fast"))
+        
+        return AmbientCaptureResponse(
+            transcript=transcript,
+            summary=agent_result.reply
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Aha Catcher Exception]: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process ambient audio: {str(e)}")
+
+@app.post("/api/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    High-Precision Neural Whisper STT Endpoint.
+    Transcribes uploaded audio files via AI Builder Space STT API
+    with technical domain terms ('FastAPI, SuperMind, Grok, Pydantic, Docker, Antigravity, Koyeb').
+    """
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="AI_BUILDER_API_KEY environment variable is not configured.")
+
+    try:
+        audio_content = await file.read()
+        filename = file.filename or "audio.webm"
+        content_type = file.content_type or "audio/webm"
+
+        files = {
+            "audio_file": (filename, audio_content, content_type)
+        }
+        data = {
+            "model": "whisper-1",
+            "prompt": "SuperMind Engine technical chat with FastAPI, Pydantic, Grok, Docker, Koyeb, Antigravity",
+            "terms": "FastAPI, SuperMind, Pydantic, Grok, Docker, Antigravity, Koyeb"
+        }
+        headers = {
+            "Authorization": f"Bearer {API_KEY}"
+        }
+
+        stt_url = f"{API_BASE_URL}/audio/transcriptions"
+        stt_response = requests.post(stt_url, files=files, data=data, headers=headers)
+
+        if stt_response.status_code != 200:
+            raise HTTPException(status_code=stt_response.status_code, detail=f"AI Builder STT Error: {stt_response.text}")
+
+        res_json = stt_response.json()
+        transcript = res_json.get("text", "").strip()
+        return {"text": transcript}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Speech transcription failed: {str(e)}")
+
+
 # Chapter 1: Root Health Check
 @app.get("/")
 def root():
     """Root health check endpoint."""
-    return {"message": "SuperMind Core Agentic Engine is Live!", "gui": "http://127.0.0.1:8000/gui", "docs": "http://127.0.0.1:8000/docs"}
+    return {
+        "message": "SuperMind Agentic Core & Aha Catcher MVP is Live!",
+        "gui": "http://127.0.0.1:8000/gui",
+        "ambient_mvp": "http://127.0.0.1:8000/ambient",
+        "docs": "http://127.0.0.1:8000/docs"
+    }
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))

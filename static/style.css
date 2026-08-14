@@ -498,6 +498,29 @@ body {
     animation: mic-pulse 1.2s infinite ease-in-out;
 }
 
+.mic-btn.whisper-mode {
+    opacity: 1.0;
+    color: #ffffff;
+    background: #8b5cf6;
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.7);
+    animation: whisper-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes whisper-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 8px rgba(139, 92, 246, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
+}
+
 @keyframes mic-pulse {
     0% {
         transform: scale(1);

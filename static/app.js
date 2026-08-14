@@ -432,9 +432,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
-    // Antigravity Voice Input & STT Integration
+    // Antigravity Option 3: Hybrid STT Architecture
     // ==========================================
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isWhisperMode = false;
+
+    // Technical Vocabulary Semantic Formatter
+    function formatSemanticTerms(text) {
+        if (!text) return text;
+        return text
+            .replace(/\bfast\s*api\b/gi, 'FastAPI')
+            .replace(/\bsuper\s*mind\b/gi, 'SuperMind')
+            .replace(/\bpydantic\b/gi, 'Pydantic')
+            .replace(/\bgrok\b/gi, 'Grok')
+            .replace(/\bdocker\b/gi, 'Docker')
+            .replace(/\bkoyeb\b/gi, 'Koyeb')
+            .replace(/\bantigravity\b/gi, 'Antigravity');
+    }
 
     function initSpeechRecognition() {
         if (!SpeechRecognition) return null;
@@ -445,9 +461,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         rec.onstart = () => {
             isRecording = true;
+            isWhisperMode = false;
             if (micBtn) {
+                micBtn.classList.remove("whisper-mode");
                 micBtn.classList.add("recording");
-                micBtn.title = "Recording... Click or press Ctrl+M to stop";
+                micBtn.title = "Live Recording... Click or press Ctrl+M to stop";
             }
         };
 
@@ -457,7 +475,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 transcriptText += event.results[i][0].transcript;
             }
             if (transcriptText) {
-                promptInput.value = transcriptText;
+                promptInput.value = formatSemanticTerms(transcriptText);
                 promptInput.dispatchEvent(new Event("input"));
             }
         };
@@ -474,11 +492,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return rec;
     }
 
-    function toggleVoiceRecording() {
+    function toggleVoiceRecording(forceWhisper = false) {
         if (isRecording) {
             stopVoiceRecording();
         } else {
-            startVoiceRecording();
+            if (forceWhisper) {
+                startWhisperRecording();
+            } else {
+                startVoiceRecording();
+            }
         }
     }
 
@@ -494,7 +516,64 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.warn("Speech recognition start warning:", e);
             }
         } else {
-            alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+            // Fallback to Whisper Mode if Web Speech API is unsupported
+            startWhisperRecording();
+        }
+    }
+
+    async function startWhisperRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop());
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const formData = new FormData();
+                formData.append("file", audioBlob, "recording.webm");
+
+                if (micBtn) {
+                    micBtn.classList.remove("whisper-mode");
+                    micBtn.title = "Transcribing with Whisper STT...";
+                }
+
+                try {
+                    const res = await fetch("/api/transcribe", {
+                        method: "POST",
+                        body: formData
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.text) {
+                            promptInput.value = formatSemanticTerms(data.text);
+                            promptInput.dispatchEvent(new Event("input"));
+                        }
+                    } else {
+                        console.warn("Whisper transcription failed");
+                    }
+                } catch (err) {
+                    console.error("Whisper STT error:", err);
+                } finally {
+                    stopVoiceRecording();
+                }
+            };
+
+            isRecording = true;
+            isWhisperMode = true;
+            if (micBtn) {
+                micBtn.classList.remove("recording");
+                micBtn.classList.add("whisper-mode");
+                micBtn.title = "Whisper Neural Mode Recording... Click to stop";
+            }
+            mediaRecorder.start();
+        } catch (err) {
+            console.warn("Microphone access denied for Whisper STT:", err);
+            alert("Microphone access is required for voice recording.");
         }
     }
 
@@ -502,27 +581,34 @@ document.addEventListener("DOMContentLoaded", () => {
         isRecording = false;
         if (micBtn) {
             micBtn.classList.remove("recording");
-            micBtn.title = "Voice Input (Ctrl+M)";
+            micBtn.classList.remove("whisper-mode");
+            micBtn.title = "Voice Input (Ctrl+M • Shift+Click for Whisper STT)";
+        }
+        if (isWhisperMode && mediaRecorder && mediaRecorder.state !== "inactive") {
+            try {
+                mediaRecorder.stop();
+            } catch (e) {}
         }
         if (recognition) {
             try {
                 recognition.stop();
             } catch (e) {}
         }
+        isWhisperMode = false;
     }
 
     if (micBtn) {
         micBtn.addEventListener("click", (e) => {
             e.preventDefault();
-            toggleVoiceRecording();
+            toggleVoiceRecording(e.shiftKey);
         });
     }
 
-    // Global Shortcut: Ctrl+M or Cmd+M to toggle Voice Recording
+    // Global Shortcut: Ctrl+M (or Cmd+M) to toggle Voice Recording
     document.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
             e.preventDefault();
-            toggleVoiceRecording();
+            toggleVoiceRecording(e.shiftKey);
         }
     });
 });
