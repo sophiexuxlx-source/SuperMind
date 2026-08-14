@@ -65,7 +65,7 @@ def web_search(query: str) -> str:
         "max_results": 3
     }
     try:
-        res = requests.post(search_url, json=payload, headers=headers, timeout=10)
+        res = requests.post(search_url, json=payload, headers=headers, timeout=25)
         if res.status_code == 200:
             data = res.json()
             # Format snippets into readable text for the LLM
